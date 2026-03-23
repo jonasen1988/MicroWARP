@@ -19,7 +19,7 @@ if [ ! -f "$WG_CONF" ]; then
 
     WGCF_VER=$(curl -sL https://api.github.com/repos/ViRb3/wgcf/releases/latest | grep '"tag_name"' | sed 's/.*"v\(.*\)".*/\1/')
     echo "==> [MicroWARP] 检测到最新 wgcf 版本: v${WGCF_VER}"
-    wget -qO wgcf "https://github.com/ViRb3/wgcf/releases/download/v${WGCF_VER}/wgcf_${WGCF_VER}_linux_${WGCF_ARCH}"
+    wget --timeout=15 -qO wgcf "https://github.com/ViRb3/wgcf/releases/download/v${WGCF_VER}/wgcf_${WGCF_VER}_linux_${WGCF_ARCH}"
     chmod +x wgcf
 
     echo "==> [MicroWARP] 正在向 CF 注册设备..."
@@ -40,8 +40,13 @@ fi
 # ==========================================
 # 2. 强力洗白与内核兼容性处理 (魔改 wg0.conf)
 # ==========================================
-# 删 DNS 就足够了，删多了跑不了了
+
+# 确保在纯 IPv4 Docker 环境下 100% 成功拉起网卡
+# 永远不要假设用户默认启用了 Docker IPv6 网络监听
+sed -i 's/^AllowedIPs.*/AllowedIPs = 0.0.0.0\/0/g' "$WG_CONF"
+sed -i '/Address.*:/d' "$WG_CONF" 
 sed -i '/^DNS.*/d' "$WG_CONF"
+
 
 # 删除 Alpine 系统自带 wg-quick 中不兼容的路由标记
 sed -i '/src_valid_mark/d' /usr/bin/wg-quick
